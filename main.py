@@ -12,13 +12,24 @@ def input_error(value_error_msg=None, key_error_msg=None, index_error_msg=None):
         def inner(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except KeyError:
+            except KeyError as e:
                 return (
                     key_error_msg
                     or f"{Fore.RED}Error{Style.RESET_ALL}: contact not found"
                 )
-            except ValueError:
-                return value_error_msg or "Enter the argument for the command"
+            except AttributeError:
+                return key_error_msg or "No contact with this name"
+            except ValueError as e:
+                msg = str(e)
+
+                if (
+                    "not enough values to unpack" in msg
+                    or "too many values to unpack" in msg
+                ):
+                    return value_error_msg or "Enter the argument for the command"
+
+                return f"{Fore.RED}Error{Style.RESET_ALL}: {msg}"
+
             except IndexError:
                 return index_error_msg or "Error: not enough arguments provided."
             except Exception as e:
@@ -29,6 +40,7 @@ def input_error(value_error_msg=None, key_error_msg=None, index_error_msg=None):
     return decorator
 
 
+@input_error()
 def parse_input(user_input):
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
@@ -36,9 +48,8 @@ def parse_input(user_input):
 
 
 @input_error(
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}add Alice 1234578910{Style.RESET_ALL})"
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}add Alice 1234578910{Style.RESET_ALL})",
 )
-@input_error()
 def add_contact(args, book: AddressBook):
     name, phone = args
     record = book.find(name)
@@ -53,16 +64,12 @@ def add_contact(args, book: AddressBook):
 
 
 @input_error(
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}change Alice 1234578910{Style.RESET_ALL}) "
+    key_error_msg="No contact with this name",
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}change Alice 1234578910{Style.RESET_ALL}) ",
 )
-@input_error()
 def change_contact(args, book: AddressBook):
     name, phone = args
     record = book.find(name)
-    if record is None:
-        raise KeyError
-    if not record.phones:
-        raise ValueError
 
     old_phone = record.phones[0].value
     record.edit_phone(old_phone, phone)
@@ -71,24 +78,12 @@ def change_contact(args, book: AddressBook):
 
 
 @input_error(
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide a name (example: {Fore.MAGENTA}phone Alice {Style.RESET_ALL})"
+    key_error_msg="No phone with this name",
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide a name (example: {Fore.MAGENTA}phone Alice {Style.RESET_ALL})",
 )
-@input_error()
 def show_phone(args, book: AddressBook):
-    if not args:
-        raise ValueError
-    if len(args) > 2:
-        raise ValueError
-
-    name = args[0]
+    (name,) = args
     record = book.find(name)
-
-    if record is None:
-        raise KeyError
-
-    if not record.phones:
-        raise ValueError
-
     phones = ", ".join(phone.value for phone in record.phones)
 
     return f"{Style.RESET_ALL}Phone '{name}': {BROWN}'{phones}' {Style.RESET_ALL}."
@@ -108,31 +103,26 @@ def show_all(args, book: AddressBook):
 
 
 @input_error(
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and birthday (example: {Fore.MAGENTA}add-birthday Alice DD.MM.YYYY{Style.RESET_ALL})"
+    key_error_msg="No contact with this name",
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and birthday (example: {Fore.MAGENTA}add-birthday Alice DD.MM.YYYY{Style.RESET_ALL})",
 )
-@input_error()
 def add_birthday(args, book: AddressBook):
     name, birthday = args
     record = book.find(name)
-    if record is None:
-        raise KeyError
 
     add_b = record.add_birthday(birthday)
     return f"{Style.RESET_ALL}Birthday '{name}': {BROWN}'{add_b}' {Style.RESET_ALL}."
 
 
 @input_error(
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide a name (example: {Fore.MAGENTA}show-birthday Alice {Style.RESET_ALL})"
+    key_error_msg="No contact with this name",
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide a name (example: {Fore.MAGENTA}show-birthday Alice {Style.RESET_ALL})",
 )
-@input_error()
 def show_birthday(args, book: AddressBook):
-    name = args[0]
+    (name,) = args
     record = book.find(name)
-    if record is None:
-        raise KeyError
 
     record_birthday = record.birthday.value
-    print(f"record_birthday", record_birthday)
 
     return f"{Style.RESET_ALL}Birthday '{name}': {BROWN}'{record_birthday}' {Style.RESET_ALL}."
 
@@ -141,7 +131,6 @@ def show_birthday(args, book: AddressBook):
     key_error_msg="No birthdays.",
     index_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide (example: {Fore.MAGENTA} birthdays{Style.RESET_ALL})",
 )
-@input_error()
 def all_birthdays(args, book: AddressBook):
     if not book:
         raise KeyError
@@ -149,6 +138,8 @@ def all_birthdays(args, book: AddressBook):
         raise IndexError
 
     birthdays = book.get_upcoming_birthdays()
+    if not  birthdays:
+        raise KeyError
 
     return f"{BROWN}{birthdays}{Style.RESET_ALL}"
 

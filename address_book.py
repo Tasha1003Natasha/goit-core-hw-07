@@ -27,10 +27,10 @@ class Phone(Field):
 class Birthday(Field):
     def __init__(self, value):
         try:
-            date = datetime.strptime(value, "%d.%m.%Y").date()
+            datetime.strptime(value, "%d.%m.%Y")
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
-        super().__init__(date)
+        super().__init__(value)
 
 
 class Record:
@@ -95,31 +95,34 @@ class AddressBook(UserDict):
             return self.data.pop(name, None)
 
     def get_upcoming_birthdays(self, days=7):
-     
+
         upcoming_birthdays = []
         today = date.today()
 
         for record in self.values():
             if record.birthday is None:
-                continue 
-             
-            birthday_date = record.birthday.value
+                continue
 
-            birthday_this_year =  birthday_date.replace(year=today.year)
+            birthday_date = datetime.strptime(record.birthday.value, "%d.%m.%Y").date()
+  
+            birthday_this_year = birthday_date.replace(year=today.year)
 
             if birthday_this_year < today:
                 birthday_this_year = birthday_date.replace(year=today.year + 1)
 
-
             if 0 <= (birthday_this_year - today).days <= days:
-           
-               congratulation_date_str = self._adjust_for_weekend(birthday_this_year)
 
-               upcoming_birthdays.append(
-                {"name": record.name.value,   "birthday": congratulation_date_str.strftime("%Y.%m.%d")}
-            )
+                congratulation_date_str = self._adjust_for_weekend(birthday_this_year)
+
+                upcoming_birthdays.append(
+                    {
+                        "name": record.name.value,
+                        "birthday": congratulation_date_str.strftime("%d.%m.%Y"),
+                    }
+                )
+
         return upcoming_birthdays
-    
+
     @staticmethod
     def _adjust_for_weekend(birthday_date):
         if birthday_date.weekday() == 5:
@@ -133,7 +136,4 @@ class AddressBook(UserDict):
         for record in self.data.values():
             result.append(str(record))
         return "\n".join(result)
-
-
-
 
