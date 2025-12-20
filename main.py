@@ -65,13 +65,12 @@ def add_contact(args, book: AddressBook):
 
 @input_error(
     key_error_msg="No contact with this name",
-    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}change Alice 1234578910{Style.RESET_ALL}) ",
+    value_error_msg=f"{Fore.RED}Error{Style.RESET_ALL}: you must provide both name and phone number (example: {Fore.MAGENTA}change Alice 1234578910 10987654321{Style.RESET_ALL}) ",
 )
 def change_contact(args, book: AddressBook):
-    name, phone = args
+    name, old_phone, phone = args
     record = book.find(name)
 
-    old_phone = record.phones[0].value
     record.edit_phone(old_phone, phone)
 
     return f"{Style.RESET_ALL}Contact {BROWN}'{name}'{Style.RESET_ALL} updated."
@@ -138,7 +137,7 @@ def all_birthdays(args, book: AddressBook):
         raise IndexError
 
     birthdays = book.get_upcoming_birthdays()
-    if not  birthdays:
+    if not birthdays:
         raise KeyError
 
     return f"{BROWN}{birthdays}{Style.RESET_ALL}"
